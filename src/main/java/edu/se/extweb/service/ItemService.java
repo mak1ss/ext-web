@@ -155,7 +155,7 @@ public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest reques
     ApiResponse<PaginationMetaData, Item> response =
             new ApiResponse<>(metaData, page.getContent());
 
-    return null;
+    return response;
 }
 
 

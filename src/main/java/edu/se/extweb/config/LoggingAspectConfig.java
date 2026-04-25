@@ -33,8 +33,11 @@ public class LoggingAspectConfig {
 
     @AfterReturning(pointcut = "methodsPointcut()", returning = "result")
     public void logAfterMethod(JoinPoint joinPoint, Object result) {
-
-
+        String className = joinPoint.getTarget().getClass().getSimpleName();
+        String methodName = joinPoint.getSignature().getName();
+        Object[] args = joinPoint.getArgs();
+        log.info("Method {}.{} completed successfully with result: {} for arguments: {}",
+                className, methodName, result, Arrays.toString(args));
     }
 
 }
