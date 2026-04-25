@@ -53,10 +53,10 @@ public class ItemService {
 
     //  @PostConstruct
     void init() {
-      this.itemRepository.deleteAll();
-      for(Item item : items) {
-          create(item);
-      }
+        this.itemRepository.deleteAll();
+        for(Item item : items) {
+            create(item);
+        }
 
     }
     //  CRUD   - create read update delete
@@ -112,7 +112,7 @@ public class ItemService {
     }
 
     public void deleteAll() {
-       itemRepository.deleteAll();
+        itemRepository.deleteAll();
     }
 
     //------------------------- 12 03 response impl ------------------------------
@@ -132,29 +132,40 @@ public class ItemService {
     }
 
     public  ApiResponse<BaseMetaData, Item> updateAsApiResponse(Item item) {
-   return null;
+        return null;
     }
 
-/////////////////   26.03 ////////////////////////////////
+    /////////////////   26.03 ////////////////////////////////
 
-public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request){
+    public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request){
 
-    Pageable pageable = PageRequest.of(request.page(), request.size(),
-            Sort.by(Sort.Direction.DESC, "id"));
+        Pageable pageable = PageRequest.of(request.page(), request.size(),
+                Sort.by(Sort.Direction.DESC, "id"));
 
-    Page<Item> page = itemRepository.findAll(pageable);
+        Page<Item> page = itemRepository.findAll(pageable);
 
-    PaginationMetaData metaData = new PaginationMetaData();
-    metaData.setCode(200);
-    // TODO
-    metaData.setNumber(page.getNumber());
-    metaData.setSize(page.getSize());
-    //TODO
-    ApiResponse<PaginationMetaData, Item> response =
-            new ApiResponse<>(metaData, page.getContent());
+        PaginationMetaData metaData = new PaginationMetaData();
+        metaData.setCode(200);
+        metaData.setSuccess(true);
+        metaData.setNumber(page.getNumber());
+        metaData.setSize(page.getSize());
+        metaData.setTotalElements(page.getTotalElements());
+        metaData.setTotalPages(page.getTotalPages());
+        metaData.setFirst(page.isFirst());
+        metaData.setLast(page.isLast());
 
-    return null;
-}
+        if (page.getTotalElements() == 0) {
+            metaData.setErrorMessage("Warning: No items found in the database");
+            return new ApiResponse<>(metaData, new ArrayList<>());
+        }
+
+        if (page.getNumber() >= page.getTotalPages()) {
+            metaData.setErrorMessage("Warning: Page " + request.page() + " is out of range. Total pages: " + page.getTotalPages());
+            return new ApiResponse<>(metaData, new ArrayList<>());
+        }
+
+        return new ApiResponse<>(metaData, page.getContent());
+    }
 
 
 
