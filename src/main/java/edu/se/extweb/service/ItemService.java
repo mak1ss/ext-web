@@ -55,10 +55,10 @@ public class ItemService {
 
     //  @PostConstruct
     void init() {
-      this.itemRepository.deleteAll();
-      for(Item item : items) {
-          create(item);
-      }
+        this.itemRepository.deleteAll();
+        for(Item item : items) {
+            create(item);
+        }
 
     }
     //  CRUD   - create read update delete
@@ -114,7 +114,7 @@ public class ItemService {
     }
 
     public void deleteAll() {
-       itemRepository.deleteAll();
+        itemRepository.deleteAll();
     }
 
     //------------------------- 12 03 response impl ------------------------------
@@ -134,33 +134,71 @@ public class ItemService {
     }
 
     public  ApiResponse<BaseMetaData, Item> updateAsApiResponse(Item item) {
-   return null;
+        return null;
     }
 
-/////////////////   26.03 ////////////////////////////////
+    /////////////////   26.03 ////////////////////////////////
 
-public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request){
+    public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request) {
+        Sort sort = Sort.by(Sort.Direction.DESC, "id");
+        Pageable pageable = PageRequest.of(request.page(), request.size(), sort);
+        Page<Item> page = itemRepository.findAll(pageable);
 
-    Pageable pageable = PageRequest.of(request.page(), request.size(),
-            Sort.by(Sort.Direction.DESC, "id"));
+        PaginationMetaData metaData = new PaginationMetaData();
+        metaData.setCode(200);
+        metaData.setSuccess(true);
+        metaData.setNumber(page.getNumber());
+        metaData.setSize(page.getSize());
+        metaData.setTotalElements(page.getTotalElements());
+        metaData.setTotalPages(page.getTotalPages());
+        metaData.setFirst(page.isFirst());
+        metaData.setLast(page.isLast());
 
-    Page<Item> page = itemRepository.findAll(pageable);
+        if (page.getTotalElements() == 0) {
+            metaData.setErrorMessage("Warning: No items found in the database");
+            return new ApiResponse<>(metaData, new ArrayList<>());
+        }
 
-    PaginationMetaData metaData = new PaginationMetaData();
-    metaData.setCode(200);
-    metaData.setSuccess(true);
-    metaData.setNumber(page.getNumber());
-    metaData.setSize(page.getSize());
-    metaData.setFirst(page.isFirst());
-    metaData.setLast(page.isLast());
-    metaData.setTotalElements(page.getTotalElements());
-    metaData.setTotalPages(page.getTotalPages());
-    List<Item> items = page.getContent();
-    ApiResponse<PaginationMetaData, Item> response =
-            new ApiResponse<>(metaData, items);
+        if (page.getNumber() >= page.getTotalPages()) {
+            int totalPages = page.getTotalPages();
+            long totalElements = page.getTotalElements();
+            int lastPageIndex = totalPages - 1;
 
-    return response;
-}
+            log.warn("Out of range: requested page {}, total pages: {}", request.page(), totalPages);
+
+            List<Item> lastItems = buildFullLastPage(request.size(), totalElements, lastPageIndex, sort);
+
+            metaData.setCode(404);
+            metaData.setSuccess(false);
+            metaData.setErrorMessage("Warning: Maximal page for the size is " + totalPages);
+            metaData.setNumber(lastPageIndex);
+            metaData.setSize(request.size());
+            metaData.setTotalElements(totalElements);
+            metaData.setTotalPages(totalPages);
+            metaData.setFirst(true);
+            metaData.setLast(true);
+
+            return new ApiResponse<>(metaData, lastItems);
+        }
+
+        return new ApiResponse<>(metaData, page.getContent());
+    }
+
+    private List<Item> buildFullLastPage(int size, long totalElements, int lastPageIndex, Sort sort) {
+        if (lastPageIndex == 0 || totalElements % size == 0) {
+            return itemRepository.findAll(PageRequest.of(lastPageIndex, size, sort)).getContent();
+        }
+
+        List<Item> prevContent = itemRepository.findAll(PageRequest.of(lastPageIndex - 1, size, sort)).getContent();
+        List<Item> lastContent = itemRepository.findAll(PageRequest.of(lastPageIndex, size, sort)).getContent();
+
+        List<Item> combined = new ArrayList<>();
+        combined.addAll(prevContent);
+        combined.addAll(lastContent);
+
+        int fromIndex = Math.max(0, combined.size() - size);
+        return new ArrayList<>(combined.subList(fromIndex, combined.size()));
+    }
 
 
 
